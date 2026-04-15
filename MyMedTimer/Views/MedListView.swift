@@ -36,7 +36,7 @@ struct MedListView: View {
                     }
                     Spacer()
                     NavigationLink {
-                        Text("History") // placeholder — Task 9
+                        HistoryView()
                     } label: {
                         Label("History", systemImage: "list.bullet")
                             .font(.system(.body, design: .monospaced))
