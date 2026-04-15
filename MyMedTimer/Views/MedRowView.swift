@@ -5,7 +5,7 @@ struct MedRowView: View {
     let dosage: String
     let colorHex: String
     let nextDoseTime: Date?
-    let onTaken: () -> Void
+    let onTap: () -> Void
 
     @State private var now = Date()
     let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
@@ -41,7 +41,7 @@ struct MedRowView: View {
         }
         .padding(.vertical, 8)
         .contentShape(Rectangle())
-        .onTapGesture { onTaken() }
+        .onTapGesture { onTap() }
         .onReceive(timer) { now = $0 }
     }
 }

@@ -8,6 +8,7 @@ struct MedListView: View {
 
     @State private var showingAddSheet = false
     @State private var editingMedication: Medication?
+    @State private var loggingMedication: Medication?
     @State private var now = Date()
 
     let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
@@ -56,6 +57,27 @@ struct MedListView: View {
             .sheet(item: $editingMedication) { med in
                 AddEditMedView(medication: med)
             }
+            .confirmationDialog(
+                loggingMedication?.name ?? "",
+                isPresented: Binding(
+                    get: { loggingMedication != nil },
+                    set: { if !$0 { loggingMedication = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Taken") {
+                    logDose(status: "taken")
+                }
+                Button("Skipped") {
+                    logDose(status: "skipped")
+                }
+                Button("Snooze 10min") {
+                    logDose(status: "snoozed")
+                }
+                Button("Cancel", role: .cancel) {
+                    loggingMedication = nil
+                }
+            }
             .onReceive(timer) { now = $0 }
         }
         .preferredColorScheme(.dark)
@@ -71,6 +93,13 @@ struct MedListView: View {
         }
     }
 
+    private func logDose(status: String) {
+        guard let med = loggingMedication else { return }
+        let scheduledTime = MedicationService.nextDoseTime(for: med, after: now) ?? now
+        DoseService.logDose(for: med, scheduledTime: scheduledTime, status: status, in: context)
+        loggingMedication = nil
+    }
+
     private var medList: some View {
         List {
             ForEach(sortedMeds) { med in
@@ -79,10 +108,8 @@ struct MedListView: View {
                     dosage: med.dosage,
                     colorHex: med.colorHex,
                     nextDoseTime: MedicationService.nextDoseTime(for: med, after: now),
-                    onTaken: {
-                        if let nextTime = MedicationService.nextDoseTime(for: med, after: now) {
-                            DoseService.logDose(for: med, scheduledTime: nextTime, status: "taken", in: context)
-                        }
+                    onTap: {
+                        loggingMedication = med
                     }
                 )
                 .listRowBackground(Color.black)
