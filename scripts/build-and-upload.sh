@@ -4,9 +4,9 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ARCHIVE_PATH="$PROJECT_DIR/build/MyMedTimer.xcarchive"
 EXPORT_PATH="$PROJECT_DIR/build/export"
-API_KEY="SQNHUVE5KO9T"
+API_KEY="NG27ZX6VMR"
 API_ISSUER="60591b19-a2c9-483d-85ab-152ef759da2f"
-API_KEY_PATH="$HOME/Downloads/ApiKey_${API_KEY}.p8"
+API_KEY_PATH="$HOME/Downloads/AuthKey_${API_KEY}.p8"
 
 echo "=== Generating Xcode project ==="
 cd "$PROJECT_DIR"
