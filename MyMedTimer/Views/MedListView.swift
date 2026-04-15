@@ -43,7 +43,7 @@ struct MedListView: View {
                     }
                     Spacer()
                     NavigationLink {
-                        Text("Settings") // placeholder — Task 10
+                        SettingsView()
                     } label: {
                         Label("Settings", systemImage: "gearshape")
                             .font(.system(.body, design: .monospaced))
