@@ -51,7 +51,10 @@ struct MedListView: View {
                 }
             }
             .sheet(isPresented: $showingAddSheet) {
-                Text("Add Med Sheet") // placeholder — Task 8
+                AddEditMedView()
+            }
+            .sheet(item: $editingMedication) { med in
+                AddEditMedView(medication: med)
             }
             .onReceive(timer) { now = $0 }
         }
