@@ -5,7 +5,7 @@ let project = Project(
     settings: .settings(
         base: [
             "DEVELOPMENT_TEAM": "H82APH3TK5",
-            "CURRENT_PROJECT_VERSION": "3",
+            "CURRENT_PROJECT_VERSION": "4",
             "MARKETING_VERSION": "1.1.0",
         ],
         configurations: [
