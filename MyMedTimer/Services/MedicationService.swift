@@ -42,6 +42,35 @@ enum MedicationService {
         return tomorrowCandidates.min()
     }
 
+    /// Last time a dose was actually taken for this medication.
+    static func lastTakenTime(for medication: Medication) -> Date? {
+        medication.doseLogs
+            .filter { $0.status == "taken" }
+            .compactMap { $0.actualTime }
+            .max()
+    }
+
+    /// Time interval since last taken dose. Nil if never taken.
+    static func timeSinceLastDose(for medication: Medication, now: Date = Date()) -> TimeInterval? {
+        guard let last = lastTakenTime(for: medication) else { return nil }
+        return now.timeIntervalSince(last)
+    }
+
+    /// Whether PRN med can be taken again (min interval elapsed or no interval set).
+    static func canTakePRN(_ medication: Medication, now: Date = Date()) -> Bool {
+        guard medication.isPRN, medication.minIntervalMinutes > 0 else { return true }
+        guard let elapsed = timeSinceLastDose(for: medication, now: now) else { return true }
+        return elapsed >= Double(medication.minIntervalMinutes) * 60
+    }
+
+    /// Minutes remaining before PRN med can be taken again. 0 if ready.
+    static func minutesUntilCanTake(_ medication: Medication, now: Date = Date()) -> Int {
+        guard medication.isPRN, medication.minIntervalMinutes > 0,
+              let elapsed = timeSinceLastDose(for: medication, now: now) else { return 0 }
+        let remaining = Double(medication.minIntervalMinutes) * 60 - elapsed
+        return remaining > 0 ? Int(ceil(remaining / 60)) : 0
+    }
+
     static func sortedByNextDose(_ medications: [Medication], after now: Date = Date()) -> [Medication] {
         medications.sorted { a, b in
             let aNext = nextDoseTime(for: a, after: now) ?? .distantFuture

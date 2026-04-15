@@ -4,7 +4,10 @@ struct MedRowView: View {
     let name: String
     let dosage: String
     let colorHex: String
+    let isPRN: Bool
     let nextDoseTime: Date?
+    let lastTakenTime: Date?
+    let prnWarning: String?
     let onTap: () -> Void
 
     @State private var now = Date()
@@ -28,7 +31,27 @@ struct MedRowView: View {
 
             Spacer()
 
-            if let nextDose = nextDoseTime {
+            if isPRN {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("PRN")
+                        .font(.system(.caption2, design: .monospaced, weight: .bold))
+                        .foregroundStyle(.secondary)
+                    if let warning = prnWarning {
+                        Text(warning)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.orange)
+                    } else if let last = lastTakenTime {
+                        let elapsed = now.timeIntervalSince(last)
+                        Text(TimeFormatting.countdown(elapsed) + " ago")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("not taken")
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } else if let nextDose = nextDoseTime {
                 let interval = nextDose.timeIntervalSince(now)
                 Text(TimeFormatting.countdown(interval))
                     .font(.system(.title3, design: .monospaced, weight: .bold))

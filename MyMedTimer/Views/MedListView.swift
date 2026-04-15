@@ -58,21 +58,30 @@ struct MedListView: View {
                 AddEditMedView(medication: med)
             }
             .confirmationDialog(
-                loggingMedication?.name ?? "",
+                confirmationTitle,
                 isPresented: Binding(
                     get: { loggingMedication != nil },
                     set: { if !$0 { loggingMedication = nil } }
                 ),
                 titleVisibility: .visible
             ) {
-                Button("Taken") {
-                    logDose(status: "taken")
-                }
-                Button("Skipped") {
-                    logDose(status: "skipped")
-                }
-                Button("Snooze 10min") {
-                    logDose(status: "snoozed")
+                if let med = loggingMedication {
+                    if med.isPRN {
+                        let canTake = MedicationService.canTakePRN(med, now: now)
+                        Button(canTake ? "Take now" : "Take anyway") {
+                            logDose(status: "taken")
+                        }
+                    } else {
+                        Button("Taken") {
+                            logDose(status: "taken")
+                        }
+                        Button("Skipped") {
+                            logDose(status: "skipped")
+                        }
+                        Button("Snooze 10min") {
+                            logDose(status: "snoozed")
+                        }
+                    }
                 }
                 Button("Cancel", role: .cancel) {
                     loggingMedication = nil
@@ -93,6 +102,21 @@ struct MedListView: View {
         }
     }
 
+    private var confirmationTitle: String {
+        guard let med = loggingMedication else { return "" }
+        if med.isPRN, !MedicationService.canTakePRN(med, now: now) {
+            let mins = MedicationService.minutesUntilCanTake(med, now: now)
+            return "\(med.name) — wait \(mins)m before next dose"
+        }
+        return med.name
+    }
+
+    private func prnWarning(for med: Medication) -> String? {
+        guard med.isPRN, !MedicationService.canTakePRN(med, now: now) else { return nil }
+        let mins = MedicationService.minutesUntilCanTake(med, now: now)
+        return "wait \(mins)m"
+    }
+
     private func logDose(status: String) {
         guard let med = loggingMedication else { return }
         let scheduledTime = MedicationService.nextDoseTime(for: med, after: now) ?? now
@@ -107,7 +131,10 @@ struct MedListView: View {
                     name: med.name,
                     dosage: med.dosage,
                     colorHex: med.colorHex,
-                    nextDoseTime: MedicationService.nextDoseTime(for: med, after: now),
+                    isPRN: med.isPRN,
+                    nextDoseTime: med.isPRN ? nil : MedicationService.nextDoseTime(for: med, after: now),
+                    lastTakenTime: med.isPRN ? MedicationService.lastTakenTime(for: med) : nil,
+                    prnWarning: prnWarning(for: med),
                     onTap: {
                         loggingMedication = med
                     }

@@ -11,9 +11,12 @@ struct AddEditMedView: View {
     @State private var dosage: String = ""
     @State private var colorHex: String = "#FF6B6B"
     @State private var alertStyle: String = "gentle"
+    @State private var isPRN: Bool = false
+    @State private var minIntervalMinutes: Int = 0
     @State private var scheduleTimes: [(hour: Int, minute: Int)] = [(8, 0)]
 
     private var isEditing: Bool { medication != nil }
+    private let intervalOptions = [0, 30, 60, 120, 180, 240, 360, 480]
 
     private let colorOptions = [
         "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4",
@@ -34,6 +37,25 @@ struct AddEditMedView: View {
                         .font(.system(.body, design: .monospaced))
                     TextField("Dosage (e.g. 500mg)", text: $dosage)
                         .font(.system(.body, design: .monospaced))
+                }
+
+                Section("type") {
+                    Toggle("As needed (PRN)", isOn: $isPRN)
+                        .font(.system(.body, design: .monospaced))
+
+                    if isPRN {
+                        Picker("Min interval", selection: $minIntervalMinutes) {
+                            Text("none").tag(0)
+                            ForEach(intervalOptions.filter { $0 > 0 }, id: \.self) { mins in
+                                if mins < 60 {
+                                    Text("\(mins)m").tag(mins)
+                                } else {
+                                    Text("\(mins / 60)h").tag(mins)
+                                }
+                            }
+                        }
+                        .font(.system(.body, design: .monospaced))
+                    }
                 }
 
                 Section("color") {
@@ -62,7 +84,7 @@ struct AddEditMedView: View {
                     .font(.system(.body, design: .monospaced))
                 }
 
-                Section("schedule") {
+                if !isPRN { Section("schedule") {
                     ForEach(scheduleTimes.indices, id: \.self) { index in
                         HStack {
                             let binding = Binding(
@@ -95,7 +117,7 @@ struct AddEditMedView: View {
                         scheduleTimes.append((12, 0))
                     }
                     .font(.system(.body, design: .monospaced))
-                }
+                } }
             }
             .navigationTitle(isEditing ? "edit med" : "add med")
             .navigationBarTitleDisplayMode(.inline)
@@ -121,6 +143,8 @@ struct AddEditMedView: View {
         dosage = med.dosage
         colorHex = med.colorHex
         alertStyle = med.alertStyle
+        isPRN = med.isPRN
+        minIntervalMinutes = med.minIntervalMinutes
         scheduleTimes = med.scheduleTimes.map { ($0.hour, $0.minute) }
         if scheduleTimes.isEmpty { scheduleTimes = [(8, 0)] }
     }
@@ -133,6 +157,8 @@ struct AddEditMedView: View {
             med.dosage = dosage.trimmingCharacters(in: .whitespaces)
             med.colorHex = colorHex
             med.alertStyle = alertStyle
+            med.isPRN = isPRN
+            med.minIntervalMinutes = minIntervalMinutes
             for schedule in med.scheduleTimes {
                 context.delete(schedule)
             }
@@ -144,29 +170,33 @@ struct AddEditMedView: View {
                 colorHex: colorHex,
                 alertStyle: alertStyle
             )
+            med.isPRN = isPRN
+            med.minIntervalMinutes = minIntervalMinutes
             context.insert(med)
         }
 
-        for time in scheduleTimes {
-            let schedule = ScheduleTime(hour: time.hour, minute: time.minute)
-            med.scheduleTimes.append(schedule)
-        }
-
-        Task {
-            let notificationService = NotificationService()
-            _ = try? await notificationService.requestPermission()
-
-            for time in med.scheduleTimes {
-                let id = "med-\(med.id.uuidString)-\(String(format: "%02d:%02d", time.hour, time.minute))"
-                notificationService.cancelNotification(id: id)
+        if !isPRN {
+            for time in scheduleTimes {
+                let schedule = ScheduleTime(hour: time.hour, minute: time.minute)
+                med.scheduleTimes.append(schedule)
             }
 
-            try? await notificationService.scheduleAll(
-                medicationId: med.id.uuidString,
-                name: med.name,
-                dosage: med.dosage,
-                times: scheduleTimes
-            )
+            Task {
+                let notificationService = NotificationService()
+                _ = try? await notificationService.requestPermission()
+
+                for time in med.scheduleTimes {
+                    let id = "med-\(med.id.uuidString)-\(String(format: "%02d:%02d", time.hour, time.minute))"
+                    notificationService.cancelNotification(id: id)
+                }
+
+                try? await notificationService.scheduleAll(
+                    medicationId: med.id.uuidString,
+                    name: med.name,
+                    dosage: med.dosage,
+                    times: scheduleTimes
+                )
+            }
         }
 
         dismiss()

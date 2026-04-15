@@ -8,6 +8,8 @@ final class Medication {
     var dosage: String = ""
     var colorHex: String = "#FF6B6B"
     var alertStyle: String = "gentle"
+    var isPRN: Bool = false
+    var minIntervalMinutes: Int = 0
     var isActive: Bool = true
     var createdAt: Date = Date()
 
