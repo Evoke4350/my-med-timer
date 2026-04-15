@@ -10,7 +10,7 @@ struct MyMedTimerApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MedListView()
         }
         .modelContainer(for: [Medication.self, ScheduleTime.self, DoseLog.self])
     }
@@ -39,12 +39,5 @@ struct MyMedTimerApp: App {
         )
 
         UNUserNotificationCenter.current().setNotificationCategories([category])
-    }
-}
-
-struct ContentView: View {
-    var body: some View {
-        Text("MyMedTimer")
-            .font(.system(.title, design: .monospaced))
     }
 }
