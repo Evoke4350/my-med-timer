@@ -13,6 +13,8 @@ struct MedListView: View {
     @State private var now = Date()
     @State private var toastMessage: String?
     @State private var showToast = false
+    @State private var insights: [UUID: MedicationInsight] = [:]
+    @State private var insightTickCounter = 0
 
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -133,7 +135,15 @@ struct MedListView: View {
             } message: {
                 Text("This will remove all schedules and dose history for this medication.")
             }
-            .onReceive(timer) { now = $0 }
+            .onReceive(timer) { date in
+                now = date
+                insightTickCounter += 1
+                if insightTickCounter >= 60 {
+                    insightTickCounter = 0
+                    refreshInsights()
+                }
+            }
+            .onAppear { refreshInsights() }
         }
         .preferredColorScheme(.dark)
     }
@@ -207,6 +217,15 @@ struct MedListView: View {
         }
     }
 
+    private func refreshInsights() {
+        let results = AdherenceEngine.analyzeAll(medications: Array(medications), now: now)
+        var map: [UUID: MedicationInsight] = [:]
+        for insight in results {
+            map[insight.medicationId] = insight
+        }
+        insights = map
+    }
+
     private var medList: some View {
         List {
             ForEach(sortedMeds) { med in
@@ -219,6 +238,7 @@ struct MedListView: View {
                     lastTakenTime: med.isPRN ? MedicationService.lastTakenTime(for: med) : nil,
                     prnWarning: prnWarning(for: med),
                     now: now,
+                    riskLevel: insights[med.id]?.riskLevel,
                     onTap: {
                         loggingMedication = med
                     }

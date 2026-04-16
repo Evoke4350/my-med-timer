@@ -14,6 +14,7 @@ struct AddEditMedView: View {
     @State private var isPRN: Bool = false
     @State private var minIntervalMinutes: Int = 0
     @State private var scheduleTimes: [(hour: Int, minute: Int)] = [(8, 0)]
+    @State private var insight: MedicationInsight? = nil
 
     private var isEditing: Bool { medication != nil }
     private let intervalOptions = [0, 30, 60, 120, 180, 240, 360, 480]
@@ -146,6 +147,24 @@ struct AddEditMedView: View {
                 ))
             }
 
+            if isEditing, let insight, let suggested = insight.suggestedTime {
+                if let drift = insight.timeDriftMinutes, abs(drift) > 15 {
+                    HStack {
+                        Text("you usually take this at \(String(format: "%d:%02d", suggested.hour, suggested.minute))")
+                            .font(.system(.caption2, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Button("adjust") {
+                            scheduleTimes = [(suggested.hour, suggested.minute)]
+                        }
+                        .font(.system(.caption2, design: .monospaced))
+                    }
+                }
+                Text("consistency: \(insight.consistencyScore)%")
+                    .font(.system(.caption2, design: .monospaced))
+                    .foregroundStyle(.secondary)
+            }
+
             Button("+ add time") {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     scheduleTimes.append((12, 0))
@@ -165,6 +184,7 @@ struct AddEditMedView: View {
         minIntervalMinutes = med.minIntervalMinutes
         scheduleTimes = med.scheduleTimes.map { ($0.hour, $0.minute) }
         if scheduleTimes.isEmpty { scheduleTimes = [(8, 0)] }
+        insight = AdherenceEngine.analyze(medication: med, recentEscalationCount: 0, now: Date())
     }
 
     private func save() {

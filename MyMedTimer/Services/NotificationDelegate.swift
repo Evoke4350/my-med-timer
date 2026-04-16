@@ -82,13 +82,27 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     }
 
     // Show notification even when app is in foreground
+    @MainActor
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         let userInfo = notification.request.content.userInfo
-        let alertStyle = userInfo["alertStyle"] as? String ?? "gentle"
+        var alertStyle = userInfo["alertStyle"] as? String ?? "gentle"
+
+        // Use AdherenceEngine to determine dynamic alert style
+        if let medIdString = userInfo["medicationId"] as? String,
+           let medId = UUID(uuidString: medIdString) {
+            let context = modelContainer.mainContext
+            let descriptor = FetchDescriptor<Medication>(
+                predicate: #Predicate { $0.id == medId }
+            )
+            if let medication = try? context.fetch(descriptor).first {
+                let insight = AdherenceEngine.analyze(medication: medication)
+                alertStyle = insight.recommendedAlertStyle
+            }
+        }
 
         HapticService.playForAlertStyle(alertStyle)
 

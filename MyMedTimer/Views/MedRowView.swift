@@ -9,7 +9,32 @@ struct MedRowView: View {
     let lastTakenTime: Date?
     let prnWarning: String?
     let now: Date
+    let riskLevel: RiskLevel?
     let onTap: () -> Void
+
+    init(
+        name: String,
+        dosage: String,
+        colorHex: String,
+        isPRN: Bool,
+        nextDoseTime: Date?,
+        lastTakenTime: Date?,
+        prnWarning: String?,
+        now: Date,
+        riskLevel: RiskLevel? = nil,
+        onTap: @escaping () -> Void
+    ) {
+        self.name = name
+        self.dosage = dosage
+        self.colorHex = colorHex
+        self.isPRN = isPRN
+        self.nextDoseTime = nextDoseTime
+        self.lastTakenTime = lastTakenTime
+        self.prnWarning = prnWarning
+        self.now = now
+        self.riskLevel = riskLevel
+        self.onTap = onTap
+    }
 
     private var accessibilityDescription: String {
         var parts = [name]
@@ -85,6 +110,13 @@ struct MedRowView: View {
                 Text("--")
                     .font(.system(.title3, design: .monospaced))
                     .foregroundStyle(.secondary)
+            }
+
+            if let risk = riskLevel, risk >= .medium {
+                Circle()
+                    .fill(risk == .high ? Color.red : Color.yellow)
+                    .frame(width: 6, height: 6)
+                    .accessibilityLabel(risk == .high ? "high risk" : "medium risk")
             }
         }
         .padding(.vertical, 8)

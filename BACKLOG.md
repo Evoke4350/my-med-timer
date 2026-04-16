@@ -14,6 +14,15 @@
 - [x] **9. Fix version display** — reads from bundle instead of hardcoded
 - [x] **12. Quick actions** — app icon shortcuts for "+ Add Med" and quick-log top 2 meds
 
+### Adherence Intelligence
+- [x] **22. Hawkes self-exciting process** — MLE-fitted λ(t) = μ + Σα·exp(-β(t-tᵢ)) models adherence drift from miss events; sigmoid miss probability mapping
+- [x] **23. Circular statistics** — Von Mises distribution for time-of-day consistency; κ via Mardia-Jupp MLE; suggested schedule times
+- [x] **24. Whittle index** — restless bandit priority: W = (importance × missProb) / fatigueCost; maps to alert style escalation
+- [x] **25. AdherenceEngine** — orchestrates Hawkes + circular + Whittle; produces MedicationInsight per med with risk, consistency, drift, alert style
+- [x] **26. Dynamic alert escalation** — NotificationDelegate uses AdherenceEngine to auto-escalate alert style based on adherence patterns
+- [x] **27. Schedule suggestions** — AddEditMedView shows actual vs suggested time when drift >15min; consistency score display
+- [x] **28. Risk indicators** — MedRowView shows colored dot (green/yellow/red) for miss risk level from Hawkes analysis
+
 ### HCI Polish
 - [x] **15. VoiceOver accessibility** — all views have accessibility labels, traits, and descriptions; med rows announce name/dosage/countdown
 - [x] **16. Edit discoverability** — leading swipe-to-edit, context menu with Edit/Delete, plus existing long-press
