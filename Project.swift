@@ -5,8 +5,8 @@ let project = Project(
     settings: .settings(
         base: [
             "DEVELOPMENT_TEAM": "H82APH3TK5",
-            "CURRENT_PROJECT_VERSION": "6",
-            "MARKETING_VERSION": "1.3.0",
+            "CURRENT_PROJECT_VERSION": "7",
+            "MARKETING_VERSION": "1.4.0",
         ],
         configurations: [
             .debug(name: "Debug"),
