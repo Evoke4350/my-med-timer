@@ -43,7 +43,7 @@ struct SettingsView: View {
             }
 
             Section {
-                Text("MyMedTimer v1.0.0")
+                Text("MyMedTimer v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"))")
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
             }

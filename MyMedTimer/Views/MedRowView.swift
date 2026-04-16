@@ -11,7 +11,7 @@ struct MedRowView: View {
     let onTap: () -> Void
 
     @State private var now = Date()
-    let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
+    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         HStack(spacing: 12) {

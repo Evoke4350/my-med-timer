@@ -9,9 +9,10 @@ struct MedListView: View {
     @State private var showingAddSheet = false
     @State private var editingMedication: Medication?
     @State private var loggingMedication: Medication?
+    @State private var deletingMedication: Medication?
     @State private var now = Date()
 
-    let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
+    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var sortedMeds: [Medication] {
         MedicationService.sortedByNextDose(Array(medications), after: now)
@@ -87,6 +88,32 @@ struct MedListView: View {
                     loggingMedication = nil
                 }
             }
+            .alert(
+                "Delete \(deletingMedication?.name ?? "")?",
+                isPresented: Binding(
+                    get: { deletingMedication != nil },
+                    set: { if !$0 { deletingMedication = nil } }
+                )
+            ) {
+                Button("Delete", role: .destructive) {
+                    if let med = deletingMedication {
+                        // Cancel notifications before deleting
+                        let service = NotificationService()
+                        for time in med.scheduleTimes {
+                            let id = "med-\(med.id.uuidString)-\(String(format: "%02d:%02d", time.hour, time.minute))"
+                            service.cancelNotification(id: id)
+                            service.cancelNags(baseId: id)
+                        }
+                        context.delete(med)
+                    }
+                    deletingMedication = nil
+                }
+                Button("Cancel", role: .cancel) {
+                    deletingMedication = nil
+                }
+            } message: {
+                Text("This will remove all schedules and dose history for this medication.")
+            }
             .onReceive(timer) { now = $0 }
         }
         .preferredColorScheme(.dark)
@@ -121,6 +148,23 @@ struct MedListView: View {
         guard let med = loggingMedication else { return }
         let scheduledTime = MedicationService.nextDoseTime(for: med, after: now) ?? now
         DoseService.logDose(for: med, scheduledTime: scheduledTime, status: status, in: context)
+
+        switch status {
+        case "taken": HapticService.play(.success)
+        case "skipped": HapticService.play(.notification)
+        case "snoozed": HapticService.play(.notification)
+        default: break
+        }
+
+        // Cancel nags for this med's current notification
+        if !med.isPRN {
+            let service = NotificationService()
+            for time in med.scheduleTimes {
+                let id = "med-\(med.id.uuidString)-\(String(format: "%02d:%02d", time.hour, time.minute))"
+                service.cancelNags(baseId: id)
+            }
+        }
+
         loggingMedication = nil
     }
 
@@ -140,9 +184,9 @@ struct MedListView: View {
                     }
                 )
                 .listRowBackground(Color.black)
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     Button(role: .destructive) {
-                        context.delete(med)
+                        deletingMedication = med
                     } label: {
                         Label("Delete", systemImage: "trash")
                     }

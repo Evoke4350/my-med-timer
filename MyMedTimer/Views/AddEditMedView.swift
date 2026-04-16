@@ -151,8 +151,14 @@ struct AddEditMedView: View {
 
     private func save() {
         let med: Medication
+        // Capture old notification IDs before modifying schedules
+        var oldNotificationIds: [String] = []
+
         if let existing = medication {
             med = existing
+            oldNotificationIds = med.scheduleTimes.map { time in
+                "med-\(med.id.uuidString)-\(String(format: "%02d:%02d", time.hour, time.minute))"
+            }
             med.name = name.trimmingCharacters(in: .whitespaces)
             med.dosage = dosage.trimmingCharacters(in: .whitespaces)
             med.colorHex = colorHex
@@ -175,18 +181,24 @@ struct AddEditMedView: View {
             context.insert(med)
         }
 
-        if !isPRN {
+        let notificationService = NotificationService()
+
+        if isPRN {
+            // Cancel any existing scheduled notifications for PRN meds
+            for id in oldNotificationIds {
+                notificationService.cancelNotification(id: id)
+            }
+        } else {
             for time in scheduleTimes {
                 let schedule = ScheduleTime(hour: time.hour, minute: time.minute)
                 med.scheduleTimes.append(schedule)
             }
 
             Task {
-                let notificationService = NotificationService()
                 _ = try? await notificationService.requestPermission()
 
-                for time in med.scheduleTimes {
-                    let id = "med-\(med.id.uuidString)-\(String(format: "%02d:%02d", time.hour, time.minute))"
+                // Cancel OLD notification IDs
+                for id in oldNotificationIds {
                     notificationService.cancelNotification(id: id)
                 }
 
@@ -194,7 +206,8 @@ struct AddEditMedView: View {
                     medicationId: med.id.uuidString,
                     name: med.name,
                     dosage: med.dosage,
-                    times: scheduleTimes
+                    times: scheduleTimes,
+                    alertStyle: alertStyle
                 )
             }
         }
