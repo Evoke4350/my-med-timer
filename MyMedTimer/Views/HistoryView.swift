@@ -83,6 +83,7 @@ struct HistoryView: View {
         }
         return Image(systemName: icon)
             .foregroundStyle(color)
+            .accessibilityLabel(status)
     }
 
     private func statusColor(_ status: String) -> Color {
@@ -107,6 +108,7 @@ private struct AdherenceHeatmap: View {
     let logs: [DoseLog]
     private let columns = 7
     private let weeks = 8
+    @State private var appeared = false
 
     private var dayData: [Date: DayStatus] {
         let calendar = Calendar.current
@@ -156,24 +158,47 @@ private struct AdherenceHeatmap: View {
                 .foregroundStyle(.secondary)
 
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: columns), spacing: 3) {
-                ForEach(days, id: \.self) { day in
+                ForEach(Array(days.enumerated()), id: \.element) { index, day in
                     let status = dayData[day] ?? .none
                     RoundedRectangle(cornerRadius: 2)
                         .fill(status.color)
                         .frame(height: 14)
+                        .opacity(appeared ? 1 : 0)
+                        .animation(
+                            .easeInOut(duration: 0.3).delay(Double(index) * 0.008),
+                            value: appeared
+                        )
+                        .accessibilityLabel(heatmapCellLabel(day: day, status: status))
                 }
             }
+            .onAppear { appeared = true }
 
             HStack(spacing: 8) {
                 legendDot(color: .green.opacity(0.8), label: "taken")
                 legendDot(color: .red.opacity(0.7), label: "missed")
-                legendDot(color: .yellow.opacity(0.6), label: "late")
-                legendDot(color: Color.white.opacity(0.08), label: "none")
+                legendDot(color: .yellow.opacity(0.6), label: "snoozed")
+                legendDot(color: .orange.opacity(0.7), label: "mixed")
+                legendDot(color: Color.white.opacity(0.15), label: "none")
             }
             .font(.system(.caption2, design: .monospaced))
             .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
+    }
+
+    private func heatmapCellLabel(day: Date, status: DayStatus) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        let dateStr = formatter.string(from: day)
+        let statusStr: String = switch status {
+        case .none: "no data"
+        case .taken: "taken"
+        case .missed: "missed"
+        case .snoozed: "snoozed"
+        case .mixed: "mixed"
+        }
+        return "\(dateStr), \(statusStr)"
     }
 
     private func legendDot(color: Color, label: String) -> some View {
@@ -191,7 +216,7 @@ private enum DayStatus {
 
     var color: Color {
         switch self {
-        case .none: Color.white.opacity(0.08)
+        case .none: Color.white.opacity(0.15)
         case .taken: .green.opacity(0.8)
         case .missed: .red.opacity(0.7)
         case .snoozed: .yellow.opacity(0.6)

@@ -63,12 +63,14 @@ struct AddEditMedView: View {
                         ForEach(colorOptions, id: \.self) { hex in
                             Circle()
                                 .fill(Color(hex: hex))
-                                .frame(width: 36, height: 36)
+                                .frame(width: 44, height: 44)
                                 .overlay(
                                     Circle()
                                         .stroke(Color.white, lineWidth: colorHex == hex ? 3 : 0)
                                 )
                                 .onTapGesture { colorHex = hex }
+                                .accessibilityLabel(colorName(for: hex))
+                                .accessibilityAddTraits(colorHex == hex ? [.isButton, .isSelected] : .isButton)
                         }
                     }
                     .padding(.vertical, 8)
@@ -84,40 +86,9 @@ struct AddEditMedView: View {
                     .font(.system(.body, design: .monospaced))
                 }
 
-                if !isPRN { Section("schedule") {
-                    ForEach(scheduleTimes.indices, id: \.self) { index in
-                        HStack {
-                            let binding = Binding(
-                                get: {
-                                    dateFrom(hour: scheduleTimes[index].hour, minute: scheduleTimes[index].minute)
-                                },
-                                set: { newDate in
-                                    let components = Calendar.current.dateComponents([.hour, .minute], from: newDate)
-                                    scheduleTimes[index] = (components.hour ?? 8, components.minute ?? 0)
-                                }
-                            )
-                            DatePicker("Time", selection: binding, displayedComponents: .hourAndMinute)
-                                .labelsHidden()
-                                .font(.system(.body, design: .monospaced))
-
-                            Spacer()
-
-                            if scheduleTimes.count > 1 {
-                                Button {
-                                    scheduleTimes.remove(at: index)
-                                } label: {
-                                    Image(systemName: "minus.circle.fill")
-                                        .foregroundStyle(.red)
-                                }
-                            }
-                        }
-                    }
-
-                    Button("+ add time") {
-                        scheduleTimes.append((12, 0))
-                    }
-                    .font(.system(.body, design: .monospaced))
-                } }
+                if !isPRN {
+                    scheduleSection
+                }
             }
             .navigationTitle(isEditing ? "edit med" : "add med")
             .navigationBarTitleDisplayMode(.inline)
@@ -135,6 +106,53 @@ struct AddEditMedView: View {
             .onAppear { loadExisting() }
         }
         .preferredColorScheme(.dark)
+    }
+
+    private var scheduleSection: some View {
+        Section("schedule") {
+            ForEach(scheduleTimes.indices, id: \.self) { index in
+                HStack {
+                    let binding = Binding(
+                        get: {
+                            dateFrom(hour: scheduleTimes[index].hour, minute: scheduleTimes[index].minute)
+                        },
+                        set: { newDate in
+                            let components = Calendar.current.dateComponents([.hour, .minute], from: newDate)
+                            scheduleTimes[index] = (components.hour ?? 8, components.minute ?? 0)
+                        }
+                    )
+                    DatePicker("Time", selection: binding, displayedComponents: .hourAndMinute)
+                        .labelsHidden()
+                        .font(.system(.body, design: .monospaced))
+
+                    Spacer()
+
+                    if scheduleTimes.count > 1 {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.25)) {
+                                _ = scheduleTimes.remove(at: index)
+                            }
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                                .foregroundStyle(.red)
+                                .frame(width: 44, height: 44)
+                                .contentShape(Rectangle())
+                        }
+                    }
+                }
+                .transition(.asymmetric(
+                    insertion: .slide.combined(with: .opacity),
+                    removal: .opacity
+                ))
+            }
+
+            Button("+ add time") {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    scheduleTimes.append((12, 0))
+                }
+            }
+            .font(.system(.body, design: .monospaced))
+        }
     }
 
     private func loadExisting() {
@@ -213,6 +231,20 @@ struct AddEditMedView: View {
         }
 
         dismiss()
+    }
+
+    private func colorName(for hex: String) -> String {
+        switch hex {
+        case "#FF6B6B": "Coral red"
+        case "#4ECDC4": "Teal"
+        case "#45B7D1": "Sky blue"
+        case "#96CEB4": "Sage green"
+        case "#FFEAA7": "Pale yellow"
+        case "#DDA0DD": "Plum"
+        case "#98D8C8": "Mint"
+        case "#F7DC6F": "Gold"
+        default: "Color"
+        }
     }
 
     private func dateFrom(hour: Int, minute: Int) -> Date {

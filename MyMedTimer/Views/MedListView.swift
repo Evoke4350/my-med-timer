@@ -11,6 +11,8 @@ struct MedListView: View {
     @State private var loggingMedication: Medication?
     @State private var deletingMedication: Medication?
     @State private var now = Date()
+    @State private var toastMessage: String?
+    @State private var showToast = false
 
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -25,8 +27,25 @@ struct MedListView: View {
 
                 if medications.isEmpty {
                     emptyState
+                        .transition(.opacity)
                 } else {
                     medList
+                        .transition(.opacity)
+                }
+
+                if showToast, let message = toastMessage {
+                    VStack {
+                        Spacer()
+                        Text(message)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.primary)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(.ultraThinMaterial, in: Capsule())
+                            .padding(.bottom, 60)
+                            .transition(.opacity)
+                    }
+                    .allowsHitTesting(false)
                 }
             }
             .navigationTitle("")
@@ -165,7 +184,27 @@ struct MedListView: View {
             }
         }
 
-        loggingMedication = nil
+        let toastLabel: String
+        switch status {
+        case "taken": toastLabel = "\(med.name) — taken"
+        case "skipped": toastLabel = "\(med.name) — skipped"
+        case "snoozed": toastLabel = "\(med.name) — snoozed 10m"
+        default: toastLabel = med.name
+        }
+
+        withAnimation(.easeInOut(duration: 0.3)) {
+            loggingMedication = nil
+        }
+
+        toastMessage = toastLabel
+        withAnimation(.easeInOut(duration: 0.2)) {
+            showToast = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                showToast = false
+            }
+        }
     }
 
     private var medList: some View {
@@ -179,12 +218,33 @@ struct MedListView: View {
                     nextDoseTime: med.isPRN ? nil : MedicationService.nextDoseTime(for: med, after: now),
                     lastTakenTime: med.isPRN ? MedicationService.lastTakenTime(for: med) : nil,
                     prnWarning: prnWarning(for: med),
+                    now: now,
                     onTap: {
                         loggingMedication = med
                     }
                 )
                 .listRowBackground(Color.black)
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button(role: .destructive) {
+                        deletingMedication = med
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                    Button {
+                        editingMedication = med
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
+                    .tint(.gray)
+                }
+                .contextMenu {
+                    Button {
+                        editingMedication = med
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
                     Button(role: .destructive) {
                         deletingMedication = med
                     } label: {
@@ -198,5 +258,6 @@ struct MedListView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
+        .animation(.easeInOut(duration: 0.3), value: sortedMeds.map(\.id))
     }
 }

@@ -8,10 +8,34 @@ struct MedRowView: View {
     let nextDoseTime: Date?
     let lastTakenTime: Date?
     let prnWarning: String?
+    let now: Date
     let onTap: () -> Void
 
-    @State private var now = Date()
-    let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    private var accessibilityDescription: String {
+        var parts = [name]
+        if !dosage.isEmpty { parts.append(dosage) }
+
+        if isPRN {
+            parts.append("as needed")
+            if let warning = prnWarning {
+                parts.append(warning)
+            } else if let last = lastTakenTime {
+                let elapsed = now.timeIntervalSince(last)
+                parts.append("last taken \(TimeFormatting.countdown(elapsed)) ago")
+            } else {
+                parts.append("not taken")
+            }
+        } else if let nextDose = nextDoseTime {
+            let interval = nextDose.timeIntervalSince(now)
+            if interval < 0 {
+                parts.append("overdue")
+            } else {
+                parts.append("next dose in \(TimeFormatting.countdown(interval))")
+            }
+        }
+
+        return parts.joined(separator: ", ")
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -56,6 +80,7 @@ struct MedRowView: View {
                 Text(TimeFormatting.countdown(interval))
                     .font(.system(.title3, design: .monospaced, weight: .bold))
                     .foregroundStyle(interval < 300 ? .red : .primary)
+                    .animation(.easeInOut(duration: 0.5), value: interval < 300)
             } else {
                 Text("--")
                     .font(.system(.title3, design: .monospaced))
@@ -65,7 +90,9 @@ struct MedRowView: View {
         .padding(.vertical, 8)
         .contentShape(Rectangle())
         .onTapGesture { onTap() }
-        .onReceive(timer) { now = $0 }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(accessibilityDescription)
     }
 }
 
