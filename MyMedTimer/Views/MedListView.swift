@@ -10,6 +10,7 @@ struct MedListView: View {
     @State private var editingMedication: Medication?
     @State private var loggingMedication: Medication?
     @State private var deletingMedication: Medication?
+    @State private var retroactiveMedication: Medication?
     @State private var now = Date()
     @State private var toastMessage: String?
     @State private var showToast = false
@@ -78,6 +79,9 @@ struct MedListView: View {
             }
             .sheet(item: $editingMedication) { med in
                 AddEditMedView(medication: med)
+            }
+            .sheet(item: $retroactiveMedication) { med in
+                RetroactiveLogSheet(medication: med)
             }
             .confirmationDialog(
                 confirmationTitle,
@@ -280,6 +284,11 @@ struct MedListView: View {
                         editingMedication = med
                     } label: {
                         Label("Edit", systemImage: "pencil")
+                    }
+                    Button {
+                        retroactiveMedication = med
+                    } label: {
+                        Label("Log at custom time…", systemImage: "clock.arrow.circlepath")
                     }
                     Button(role: .destructive) {
                         deletingMedication = med
