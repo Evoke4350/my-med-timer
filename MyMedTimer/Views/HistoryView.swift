@@ -3,6 +3,7 @@ import SwiftData
 
 struct HistoryView: View {
     @Query(sort: \DoseLog.scheduledTime, order: .reverse) private var allLogs: [DoseLog]
+    @Environment(\.dismiss) private var dismiss
 
     private var groupedByDay: [(String, [DoseLog])] {
         let formatter = DateFormatter()
@@ -24,11 +25,19 @@ struct HistoryView: View {
     var body: some View {
         Group {
             if allLogs.isEmpty {
-                VStack {
+                VStack(spacing: 12) {
                     Spacer()
                     Text("no dose history yet")
                         .font(.system(.body, design: .monospaced))
                         .foregroundStyle(.secondary)
+                    Text("tap a med on the home screen, then \"taken\"")
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                    Button("← back to meds") { dismiss() }
+                        .font(.system(.body, design: .monospaced))
+                        .padding(.top, 8)
                     Spacer()
                 }
             } else {

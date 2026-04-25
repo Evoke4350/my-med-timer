@@ -42,6 +42,40 @@ enum MedicationService {
         return tomorrowCandidates.min()
     }
 
+    /// Most recent past scheduled slot for this med strictly before `now` and
+    /// within `window`. Returns nil for PRN meds, meds without scheduleTimes,
+    /// or when no slot lies in the window. Searches today and yesterday.
+    static func mostRecentScheduledDose(
+        for medication: Medication,
+        before now: Date = Date(),
+        within window: TimeInterval = 12 * 3600
+    ) -> Date? {
+        guard !medication.isPRN else { return nil }
+        let times = medication.scheduleTimes
+        guard !times.isEmpty else { return nil }
+
+        let calendar = Calendar.current
+        let cutoff = now.addingTimeInterval(-window)
+
+        var candidates: [Date] = []
+        for dayOffset in [0, -1] {
+            guard let day = calendar.date(byAdding: .day, value: dayOffset, to: now) else { continue }
+            let dayComponents = calendar.dateComponents([.year, .month, .day], from: day)
+            for schedule in times {
+                var components = dayComponents
+                components.hour = schedule.hour
+                components.minute = schedule.minute
+                components.second = 0
+                guard let date = calendar.date(from: components) else { continue }
+                if date < now && date >= cutoff {
+                    candidates.append(date)
+                }
+            }
+        }
+
+        return candidates.max()
+    }
+
     /// Last time a dose was actually taken for this medication.
     static func lastTakenTime(for medication: Medication) -> Date? {
         medication.doseLogs

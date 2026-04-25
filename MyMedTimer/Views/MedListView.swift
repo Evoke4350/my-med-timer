@@ -10,6 +10,7 @@ struct MedListView: View {
     @State private var editingMedication: Medication?
     @State private var loggingMedication: Medication?
     @State private var deletingMedication: Medication?
+    @State private var retroactiveMedication: Medication?
     @State private var now = Date()
     @State private var toastMessage: String?
     @State private var showToast = false
@@ -78,6 +79,9 @@ struct MedListView: View {
             }
             .sheet(item: $editingMedication) { med in
                 AddEditMedView(medication: med)
+            }
+            .sheet(item: $retroactiveMedication) { med in
+                RetroactiveLogSheet(medication: med)
             }
             .confirmationDialog(
                 confirmationTitle,
@@ -177,7 +181,17 @@ struct MedListView: View {
 
     private func logDose(status: String) {
         guard let med = loggingMedication else { return }
-        let scheduledTime = MedicationService.nextDoseTime(for: med, after: now) ?? now
+        // For "Taken", attribute the log to the most-recent past scheduled slot
+        // (within 12h) so logging at 8:30 records the 8:00 dose, not 8:00 PM's.
+        // Skipped/snoozed continue to point at the next upcoming slot.
+        let scheduledTime: Date
+        if status == "taken",
+           let recent = MedicationService.mostRecentScheduledDose(for: med, before: now)
+        {
+            scheduledTime = recent
+        } else {
+            scheduledTime = MedicationService.nextDoseTime(for: med, after: now) ?? now
+        }
         DoseService.logDose(for: med, scheduledTime: scheduledTime, status: status, in: context)
         defer {
             SnapshotWriter.writeSnapshot(context: context)
@@ -270,6 +284,11 @@ struct MedListView: View {
                         editingMedication = med
                     } label: {
                         Label("Edit", systemImage: "pencil")
+                    }
+                    Button {
+                        retroactiveMedication = med
+                    } label: {
+                        Label("Log at custom time…", systemImage: "clock.arrow.circlepath")
                     }
                     Button(role: .destructive) {
                         deletingMedication = med

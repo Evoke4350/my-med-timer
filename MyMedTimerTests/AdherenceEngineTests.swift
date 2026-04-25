@@ -423,6 +423,67 @@ final class AdherenceEngineTests: XCTestCase {
         XCTAssertGreaterThan(insight.missProbability, 0.3, "Recent skips should elevate miss probability")
     }
 
+    func testAnalyzeStaleMissReturnsLow() {
+        let med = Medication(name: "Aspirin", dosage: "81mg")
+        context.insert(med)
+
+        let schedule = ScheduleTime(hour: 8, minute: 0)
+        schedule.medication = med
+        context.insert(schedule)
+
+        let calendar = Calendar.current
+        let now = Date()
+        // One skip 30 days ago
+        let oldSkipTime = calendar.date(byAdding: .day, value: -30, to: now)!
+        let oldSkip = DoseLog(scheduledTime: oldSkipTime, status: "skipped")
+        oldSkip.medication = med
+        context.insert(oldSkip)
+        // 20 takes since (every day for last 20 days, all in last 14d window — gate fires before override)
+        for i in 0..<20 {
+            let day = calendar.date(byAdding: .day, value: -i, to: now)!
+            let scheduledTime = calendar.date(bySettingHour: 8, minute: 0, second: 0, of: day)!
+            let log = DoseLog(scheduledTime: scheduledTime, status: "taken", actualTime: scheduledTime)
+            log.medication = med
+            context.insert(log)
+        }
+        try? context.save()
+
+        let insight = AdherenceEngine.analyze(medication: med, recentEscalationCount: 0, now: now)
+        XCTAssertEqual(insight.riskLevel, .low, "Stale (>14d) miss with recent clean takes should be .low")
+    }
+
+    func testAnalyzeSevenConsecutiveTakesOverride() {
+        let med = Medication(name: "Statin", dosage: "20mg")
+        context.insert(med)
+
+        let schedule = ScheduleTime(hour: 21, minute: 0)
+        schedule.medication = med
+        context.insert(schedule)
+
+        let calendar = Calendar.current
+        let now = Date()
+        // Skip 10 days ago at 21:00 — recent enough to be in 14d window so the
+        // first gate (no misses in 14d) does NOT fire; only the streak gate can
+        // green-light this.
+        let skipDay = calendar.date(byAdding: .day, value: -10, to: now)!
+        let skipTime = calendar.date(bySettingHour: 21, minute: 0, second: 0, of: skipDay)!
+        let skip = DoseLog(scheduledTime: skipTime, status: "skipped")
+        skip.medication = med
+        context.insert(skip)
+        // 7 consecutive takes — all newer than the skip.
+        for i in 0..<7 {
+            let day = calendar.date(byAdding: .day, value: -i, to: now)!
+            let scheduledTime = calendar.date(bySettingHour: 21, minute: 0, second: 0, of: day)!
+            let log = DoseLog(scheduledTime: scheduledTime, status: "taken", actualTime: scheduledTime)
+            log.medication = med
+            context.insert(log)
+        }
+        try? context.save()
+
+        let insight = AdherenceEngine.analyze(medication: med, recentEscalationCount: 0, now: now)
+        XCTAssertEqual(insight.riskLevel, .low, "Seven consecutive takes after a skip should override risk to .low")
+    }
+
     func testAnalyzeEmptyLogs() {
         let med = Medication(name: "Vitamin D", dosage: "1000IU")
         context.insert(med)

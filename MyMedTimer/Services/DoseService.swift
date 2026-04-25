@@ -7,12 +7,19 @@ enum DoseService {
         for medication: Medication,
         scheduledTime: Date,
         status: String,
+        actualTime: Date? = nil,
         in context: ModelContext
     ) {
+        let resolvedActualTime: Date?
+        if let explicit = actualTime {
+            resolvedActualTime = explicit
+        } else {
+            resolvedActualTime = status == "taken" ? Date() : nil
+        }
         let log = DoseLog(
             scheduledTime: scheduledTime,
             status: status,
-            actualTime: status == "taken" ? Date() : nil
+            actualTime: resolvedActualTime
         )
         medication.doseLogs.append(log)
     }

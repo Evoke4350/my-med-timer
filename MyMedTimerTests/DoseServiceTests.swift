@@ -53,6 +53,46 @@ final class DoseServiceTests: XCTestCase {
         XCTAssertEqual(med.doseLogs.count, 2)
     }
 
+    func testLogDoseWithExplicitActualTime() throws {
+        let med = Medication(name: "Test", dosage: "1mg")
+        context.insert(med)
+
+        let scheduled = Date().addingTimeInterval(-3600)
+        let actual = Date().addingTimeInterval(-1800)
+        DoseService.logDose(
+            for: med,
+            scheduledTime: scheduled,
+            status: "taken",
+            actualTime: actual,
+            in: context
+        )
+
+        let log = med.doseLogs.first
+        XCTAssertNotNil(log?.actualTime)
+        XCTAssertEqual(log!.actualTime!.timeIntervalSince1970, actual.timeIntervalSince1970, accuracy: 1)
+        XCTAssertEqual(log!.scheduledTime.timeIntervalSince1970, scheduled.timeIntervalSince1970, accuracy: 1)
+    }
+
+    func testLogDoseExplicitActualTimeForSkippedStatus() throws {
+        let med = Medication(name: "Test", dosage: "1mg")
+        context.insert(med)
+
+        let scheduled = Date().addingTimeInterval(-7200)
+        let actual = Date().addingTimeInterval(-3600)
+        DoseService.logDose(
+            for: med,
+            scheduledTime: scheduled,
+            status: "skipped",
+            actualTime: actual,
+            in: context
+        )
+
+        // Explicit actualTime overrides the "nil for non-taken" default rule.
+        let log = med.doseLogs.first
+        XCTAssertNotNil(log?.actualTime)
+        XCTAssertEqual(log!.actualTime!.timeIntervalSince1970, actual.timeIntervalSince1970, accuracy: 1)
+    }
+
     func testTodaysDoseLogs() throws {
         let med = Medication(name: "Test", dosage: "1mg")
         context.insert(med)
