@@ -1,0 +1,111 @@
+name: TestFlight Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'LICENSE'
+      - 'BACKLOG.md'
+      - 'docs/**'
+      - 'android/**'
+  workflow_dispatch:
+
+concurrency:
+  group: testflight-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Tuist
+        run: brew install tuist
+
+      - name: Decode ASC API key
+        env:
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/secrets"
+          printf '%s' "$ASC_PRIVATE_KEY" | base64 --decode > "$RUNNER_TEMP/secrets/AuthKey.p8"
+          chmod 600 "$RUNNER_TEMP/secrets/AuthKey.p8"
+          # altool --apiKey scans well-known dirs by key id; xcodebuild
+          # accepts an explicit -authenticationKeyPath. Stage both.
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          cp "$RUNNER_TEMP/secrets/AuthKey.p8" "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          chmod 600 "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+
+      - name: Set build number
+        # github.run_number is monotonic per-workflow. Manual uploads already
+        # used builds 1–8; offset keeps CI builds safely above that so
+        # TestFlight never rejects a duplicate.
+        run: |
+          NEW_BUILD=$(( ${{ github.run_number }} + 20 ))
+          echo "BUILD_NUMBER=$NEW_BUILD" >> "$GITHUB_ENV"
+          sed -i '' "s/\"CURRENT_PROJECT_VERSION\": *\"[0-9]*\"/\"CURRENT_PROJECT_VERSION\": \"$NEW_BUILD\"/" Project.swift
+          echo "Build number: $NEW_BUILD"
+
+      - name: Generate project
+        run: tuist generate --no-open --path .
+
+      - name: Archive
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          mkdir -p build
+          xcodebuild \
+            -workspace MyMedTimer.xcworkspace \
+            -scheme MyMedTimer \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/MyMedTimer.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/secrets/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            archive
+
+      - name: Export IPA
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/MyMedTimer.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath build/export \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/secrets/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          xcrun altool \
+            --upload-app \
+            --type ios \
+            --file build/export/MyMedTimer.ipa \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID"
+          echo "Upload complete. Build $BUILD_NUMBER submitted to TestFlight."
+
+      - name: Cleanup secrets
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/secrets"
+          rm -rf "$HOME/.appstoreconnect/private_keys"

@@ -7,8 +7,10 @@
     <key>teamID</key>
     <string>H82APH3TK5</string>
     <key>destination</key>
-    <string>upload</string>
+    <string>export</string>
     <key>signingStyle</key>
     <string>automatic</string>
+    <key>uploadSymbols</key>
+    <true/>
 </dict>
 </plist>

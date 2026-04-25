@@ -250,6 +250,8 @@ struct AddEditMedView: View {
             }
         }
 
+        SnapshotWriter.writeSnapshot(context: context)
+        LiveActivityService.refresh(context: context)
         dismiss()
     }
 

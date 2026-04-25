@@ -23,6 +23,8 @@ struct MyMedTimerApp: App {
                 .onAppear {
                     UNUserNotificationCenter.current().delegate = notificationDelegate
                     setupQuickActions()
+                    SnapshotWriter.writeSnapshot(context: modelContainer.mainContext)
+                    LiveActivityService.refresh(context: modelContainer.mainContext)
                 }
         }
         .modelContainer(modelContainer)

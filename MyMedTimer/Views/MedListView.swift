@@ -126,6 +126,8 @@ struct MedListView: View {
                             service.cancelNags(baseId: id)
                         }
                         context.delete(med)
+                        SnapshotWriter.writeSnapshot(context: context)
+                        LiveActivityService.refresh(context: context)
                     }
                     deletingMedication = nil
                 }
@@ -177,6 +179,10 @@ struct MedListView: View {
         guard let med = loggingMedication else { return }
         let scheduledTime = MedicationService.nextDoseTime(for: med, after: now) ?? now
         DoseService.logDose(for: med, scheduledTime: scheduledTime, status: status, in: context)
+        defer {
+            SnapshotWriter.writeSnapshot(context: context)
+            LiveActivityService.refresh(context: context)
+        }
 
         switch status {
         case "taken": HapticService.play(.success)

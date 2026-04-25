@@ -77,6 +77,8 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
             }
 
             try? context.save()
+            SnapshotWriter.writeSnapshot(context: context)
+            LiveActivityService.refresh(context: context)
             completionHandler()
         }
     }

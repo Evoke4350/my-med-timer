@@ -1,12 +1,14 @@
 import ProjectDescription
 
+let appGroup = "group.com.nateb.mymedtimer"
+
 let project = Project(
     name: "MyMedTimer",
     settings: .settings(
         base: [
             "DEVELOPMENT_TEAM": "H82APH3TK5",
-            "CURRENT_PROJECT_VERSION": "7",
-            "MARKETING_VERSION": "1.4.0",
+            "CURRENT_PROJECT_VERSION": "8",
+            "MARKETING_VERSION": "1.5.0",
         ],
         configurations: [
             .debug(name: "Debug"),
@@ -23,9 +25,29 @@ let project = Project(
             infoPlist: .extendingDefault(with: [
                 "UIBackgroundModes": .array([.string("fetch")]),
                 "UILaunchScreen": .dictionary([:]),
+                "NSSupportsLiveActivities": .boolean(true),
+                "ITSAppUsesNonExemptEncryption": .boolean(false),
             ]),
-            sources: ["MyMedTimer/**"],
+            sources: ["MyMedTimer/**", "Shared/**"],
             resources: ["MyMedTimer/Assets.xcassets"],
+            entitlements: .file(path: "MyMedTimer.entitlements"),
+            dependencies: [
+                .target(name: "MyMedTimerWidgets"),
+            ]
+        ),
+        .target(
+            name: "MyMedTimerWidgets",
+            destinations: .iOS,
+            product: .appExtension,
+            bundleId: "com.nateb.mymedtimer.widgets",
+            deploymentTargets: .iOS("17.0"),
+            infoPlist: .extendingDefault(with: [
+                "NSExtension": .dictionary([
+                    "NSExtensionPointIdentifier": .string("com.apple.widgetkit-extension"),
+                ]),
+            ]),
+            sources: ["MyMedTimerWidgets/**", "Shared/**"],
+            entitlements: .file(path: "MyMedTimerWidgets.entitlements"),
             dependencies: []
         ),
         .target(

@@ -32,14 +32,14 @@
 - [x] **20. Timer consolidation** — single 1s timer in MedListView passed to all rows (was N+1 timers)
 - [x] **21. Notification status in settings** — shows granted/denied/not determined, opens iOS Settings if denied
 
+### Glanceable Surface (v1.5.0)
+- [x] **10. Lock screen widget** — WidgetKit extension; accessoryRectangular/Circular/Inline + systemSmall
+- [x] **11. Home screen widget** — TodayMedsWidget systemMedium/Large showing remaining doses
+- [x] **14. Live Activities / Dynamic Island** — MedTimerLiveActivity, started when next dose ≤1h, ends on dose log
+- [x] **29. App Group + snapshot pipeline** — `group.com.nateb.mymedtimer`, JSON snapshot drives widgets/Live Activity
+
 ## To Do
 
-### Medium (Phase 2/3)
-
-- [ ] **10. Lock screen widget** — WidgetKit extension showing next med + countdown
-- [ ] **11. Home screen widget** — today's remaining meds
-
-### Deferred (Needs Entitlement/Major Work)
+### Deferred (Needs Entitlement)
 
 - [ ] **13. Critical alerts** — bypass DND, requires Apple entitlement approval
-- [ ] **14. Live Activities / Dynamic Island** — active countdown on lock screen
