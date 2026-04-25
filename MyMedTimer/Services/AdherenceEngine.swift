@@ -15,6 +15,16 @@ struct MedicationInsight {
 }
 
 // MARK: - Adherence Engine
+//
+// Risk dot rules (read in this order — first match wins):
+//   1. No misses in the past 14 days  → .low (stale signal — historical
+//      misses still inform the Hawkes baseline μ but do NOT drive intensity).
+//   2. Last 7 logged doses all "taken" → .low (consecutive-clean override —
+//      a winning streak earns trust regardless of older misses).
+//   3. Otherwise: Hawkes intensity over the last-14-day window → sigmoid →
+//      missProbability → riskLevel().
+// The dot is meant to be actionable; without these gates a single skip
+// 90 days ago left it stuck on yellow indefinitely.
 
 enum AdherenceEngine {
 
@@ -52,7 +62,9 @@ enum AdherenceEngine {
         now: Date = Date()
     ) -> MedicationInsight {
         let logs = medication.doseLogs
-        let windowStart = Calendar.current.date(byAdding: .day, value: -90, to: now) ?? now
+        let calendar = Calendar.current
+        let windowStart = calendar.date(byAdding: .day, value: -90, to: now) ?? now
+        let fresh14d = calendar.date(byAdding: .day, value: -14, to: now) ?? now
 
         // Partition logs into misses and takes
         let missTimestamps = logs
@@ -63,26 +75,31 @@ enum AdherenceEngine {
             .filter { $0.status == "taken" }
             .compactMap { $0.actualTime ?? $0.scheduledTime as Date? }
 
-        // Hawkes: fit and compute miss probability
+        // Hawkes: fit μ from the full 90d history (preserves baseline calibration),
+        // but only feed last-14d misses into intensity so the dot is responsive.
         let params = HawkesProcess.fit(
             missTimestamps: missTimestamps,
             windowStart: windowStart,
             windowEnd: now
         )
 
-        let recentMisses = missTimestamps.filter { $0 >= windowStart }
+        let recentMissesIn14d = missTimestamps.filter { $0 >= fresh14d }
 
-        // Zero misses in window → low probability directly (sigmoid baseline = 0.5 is misleading)
+        // Consecutive-clean override: last 7 logs (any status) all "taken" → trust.
+        let recentLogsByTime = logs.sorted { $0.scheduledTime > $1.scheduledTime }
+        let lastSevenAllTaken = recentLogsByTime.prefix(7).count == 7
+            && recentLogsByTime.prefix(7).allSatisfy { $0.status == "taken" }
+
         let missProb: Double
         let risk: RiskLevel
-        if recentMisses.isEmpty {
+        if recentMissesIn14d.isEmpty || lastSevenAllTaken {
             missProb = 0.05
             risk = .low
         } else {
             missProb = HawkesProcess.missProbability(
                 at: now,
                 parameters: params,
-                recentMisses: recentMisses
+                recentMisses: recentMissesIn14d
             )
             risk = HawkesProcess.riskLevel(missProbability: missProb)
         }
