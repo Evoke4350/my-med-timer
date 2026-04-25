@@ -72,10 +72,15 @@ struct MedRowView: View {
                 Text(name)
                     .font(.system(.body, design: .monospaced, weight: .semibold))
                     .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .minimumScaleFactor(0.85)
 
                 Text(dosage)
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
 
             Spacer()
