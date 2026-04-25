@@ -38,10 +38,12 @@ struct RetroactiveLogSheet: View {
                     }
 
                     Section("when") {
+                        // No range bound — DatePicker captures Date() once at
+                        // construction, so a closed-range upper bound goes stale
+                        // as the user idles. Clamp to now at log() time instead.
                         DatePicker(
                             "scheduled time",
                             selection: $pickedTime,
-                            in: ...Date(),
                             displayedComponents: [.date, .hourAndMinute]
                         )
                         .font(.system(.body, design: .monospaced))
@@ -49,10 +51,12 @@ struct RetroactiveLogSheet: View {
                     }
 
                     Section("status") {
+                        // Snoozed is forward-looking ("I'll deal with it later"),
+                        // so it has no coherent meaning when applied retroactively.
+                        // Limit retro logs to taken / skipped.
                         Picker("status", selection: $status) {
                             Text("taken").tag("taken")
                             Text("skipped").tag("skipped")
-                            Text("snoozed").tag("snoozed")
                         }
                         .pickerStyle(.segmented)
                         .font(.system(.body, design: .monospaced))
@@ -83,11 +87,16 @@ struct RetroactiveLogSheet: View {
     }
 
     private func log() {
+        // Clamp to now in case the user picked a future moment after the
+        // sheet sat idle (or with no upper-bound DatePicker).
+        let clamped = min(pickedTime, Date())
+        // Match codebase convention: actualTime is set only for "taken".
+        let actual: Date? = status == "taken" ? clamped : nil
         DoseService.logDose(
             for: medication,
-            scheduledTime: pickedTime,
+            scheduledTime: clamped,
             status: status,
-            actualTime: pickedTime,
+            actualTime: actual,
             in: context
         )
         SnapshotWriter.writeSnapshot(context: context)
