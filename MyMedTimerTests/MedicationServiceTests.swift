@@ -90,6 +90,76 @@ final class MedicationServiceTests: XCTestCase {
         XCTAssertEqual(sorted[1].name, "Evening")
     }
 
+    // MARK: - mostRecentScheduledDose Tests
+
+    func testMostRecentScheduledDoseReturnsTodaySlot() {
+        let med = Medication(name: "Test", dosage: "1mg")
+        context.insert(med)
+        med.scheduleTimes = [ScheduleTime(hour: 8, minute: 0)]
+
+        let now = calendar(hour: 8, minute: 30)
+        let recent = MedicationService.mostRecentScheduledDose(for: med, before: now)
+
+        XCTAssertNotNil(recent)
+        let components = Calendar.current.dateComponents([.hour, .minute], from: recent!)
+        XCTAssertEqual(components.hour, 8)
+        XCTAssertEqual(components.minute, 0)
+        XCTAssertTrue(recent! < now)
+    }
+
+    func testMostRecentScheduledDoseRespectsWindow() {
+        let med = Medication(name: "Test", dosage: "1mg")
+        context.insert(med)
+        med.scheduleTimes = [ScheduleTime(hour: 8, minute: 0)]
+
+        let now = calendar(hour: 21, minute: 0) // 13h after the 8:00 slot
+        let recent = MedicationService.mostRecentScheduledDose(for: med, before: now)
+
+        XCTAssertNil(recent)
+    }
+
+    func testMostRecentScheduledDoseFallsBackToYesterday() {
+        let med = Medication(name: "Test", dosage: "1mg")
+        context.insert(med)
+        med.scheduleTimes = [ScheduleTime(hour: 22, minute: 0)]
+
+        let now = calendar(hour: 2, minute: 0)
+        let recent = MedicationService.mostRecentScheduledDose(for: med, before: now)
+
+        XCTAssertNotNil(recent)
+        let components = Calendar.current.dateComponents([.hour, .minute], from: recent!)
+        XCTAssertEqual(components.hour, 22)
+        XCTAssertEqual(components.minute, 0)
+        XCTAssertTrue(recent! < now)
+    }
+
+    func testMostRecentScheduledDosePRN() {
+        let med = Medication(name: "Test", dosage: "1mg")
+        med.isPRN = true
+        context.insert(med)
+        med.scheduleTimes = [ScheduleTime(hour: 8, minute: 0)]
+
+        let now = calendar(hour: 8, minute: 30)
+        XCTAssertNil(MedicationService.mostRecentScheduledDose(for: med, before: now))
+    }
+
+    func testMostRecentScheduledDosePicksLatestPastSlot() {
+        let med = Medication(name: "Test", dosage: "1mg")
+        context.insert(med)
+        med.scheduleTimes = [
+            ScheduleTime(hour: 8, minute: 0),
+            ScheduleTime(hour: 12, minute: 0),
+            ScheduleTime(hour: 20, minute: 0),
+        ]
+
+        let now = calendar(hour: 14, minute: 0)
+        let recent = MedicationService.mostRecentScheduledDose(for: med, before: now)
+
+        XCTAssertNotNil(recent)
+        let components = Calendar.current.dateComponents([.hour, .minute], from: recent!)
+        XCTAssertEqual(components.hour, 12)
+    }
+
     // MARK: - PRN Tests
 
     func testLastTakenTimeReturnsLatestTaken() {

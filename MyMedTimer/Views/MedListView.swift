@@ -177,7 +177,17 @@ struct MedListView: View {
 
     private func logDose(status: String) {
         guard let med = loggingMedication else { return }
-        let scheduledTime = MedicationService.nextDoseTime(for: med, after: now) ?? now
+        // For "Taken", attribute the log to the most-recent past scheduled slot
+        // (within 12h) so logging at 8:30 records the 8:00 dose, not 8:00 PM's.
+        // Skipped/snoozed continue to point at the next upcoming slot.
+        let scheduledTime: Date
+        if status == "taken",
+           let recent = MedicationService.mostRecentScheduledDose(for: med, before: now)
+        {
+            scheduledTime = recent
+        } else {
+            scheduledTime = MedicationService.nextDoseTime(for: med, after: now) ?? now
+        }
         DoseService.logDose(for: med, scheduledTime: scheduledTime, status: status, in: context)
         defer {
             SnapshotWriter.writeSnapshot(context: context)
