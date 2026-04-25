@@ -27,6 +27,8 @@ let project = Project(
                 "UILaunchScreen": .dictionary([:]),
                 "NSSupportsLiveActivities": .boolean(true),
                 "ITSAppUsesNonExemptEncryption": .boolean(false),
+                "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
+                "CFBundleVersion": .string("$(CURRENT_PROJECT_VERSION)"),
             ]),
             sources: ["MyMedTimer/**", "Shared/**"],
             resources: ["MyMedTimer/Assets.xcassets"],
@@ -45,6 +47,9 @@ let project = Project(
                 "NSExtension": .dictionary([
                     "NSExtensionPointIdentifier": .string("com.apple.widgetkit-extension"),
                 ]),
+                "CFBundleDisplayName": .string("MyMedTimer Widgets"),
+                "CFBundleShortVersionString": .string("$(MARKETING_VERSION)"),
+                "CFBundleVersion": .string("$(CURRENT_PROJECT_VERSION)"),
             ]),
             sources: ["MyMedTimerWidgets/**", "Shared/**"],
             entitlements: .file(path: "MyMedTimerWidgets.entitlements"),
